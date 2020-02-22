@@ -9,6 +9,7 @@
 #pragma once
 
 // Elevation Mapping
+#include <fstream>
 #include "elevation_mapping/ElevationMap.hpp"
 #include "elevation_mapping/RobotMotionMapUpdater.hpp"
 #include "elevation_mapping/sensor_processors/SensorProcessorBase.hpp"
@@ -365,6 +366,7 @@ class ElevationMapping
 
   //! Additional offset of the height value
   double initSubmapHeightOffset_;
+  std::ofstream log_stream_;
 };
 
 } /* namespace */

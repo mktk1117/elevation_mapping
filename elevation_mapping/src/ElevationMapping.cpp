@@ -39,6 +39,8 @@
 #include <math.h>
 #include <limits>
 
+#include <chrono>
+
 using namespace std;
 using namespace grid_map;
 using namespace ros;
@@ -56,7 +58,9 @@ ElevationMapping::ElevationMapping(ros::NodeHandle& nodeHandle)
       isContinouslyFusing_(false),
       ignoreRobotMotionUpdates_(false),
       receivedFirstMatchingPointcloudAndPose_(false),
-      updatesEnabled_(true)
+      updatesEnabled_(true),
+      log_stream_("log_elevation.csv")
+
 {
   ROS_INFO("Elevation mapping node started.");
 
@@ -264,6 +268,7 @@ void ElevationMapping::visibilityCleanupThread()
 void ElevationMapping::pointCloudCallback(
     const sensor_msgs::PointCloud2& rawPointCloud)
 {
+  auto t1 = std::chrono::high_resolution_clock::now();
   if(!updatesEnabled_){
     ROS_WARN_THROTTLE(10, "Updating of elevation map is disabled. (Warning message is throttled, 10s.)");
     map_.setTimestamp(ros::Time::now());
@@ -302,6 +307,7 @@ void ElevationMapping::pointCloudCallback(
 
   // Update map location.
   updateMapLocation();
+  auto t2 = std::chrono::high_resolution_clock::now();
 
   // Update map from motion prediction.
   if (!updatePrediction(lastPointCloudUpdateTime_)) {
@@ -349,6 +355,7 @@ void ElevationMapping::pointCloudCallback(
     resetMapUpdateTimer();
     return;
   }
+  auto t3 = std::chrono::high_resolution_clock::now();
 
   // Publish elevation map.
   map_.publishRawElevationMap();
@@ -356,6 +363,16 @@ void ElevationMapping::pointCloudCallback(
     map_.fuseAll();
     map_.publishFusedElevationMap();
   }
+  auto t4 = std::chrono::high_resolution_clock::now();
+
+  auto d1 = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+  auto d2 = std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count();
+  auto d3 = 0;
+  auto d4 = std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count();
+  ROS_INFO_STREAM("Data conversions " << d1);
+  ROS_INFO_STREAM("Map calculation" << d2);
+  ROS_INFO_STREAM("Gridmap publish" << d4);
+  log_stream_ << static_cast<int>(pointCloud->size()) << "," << d1 << "," << d2 << "," << d3 << "," << d4 << std::endl;
 
   resetMapUpdateTimer();
 }
